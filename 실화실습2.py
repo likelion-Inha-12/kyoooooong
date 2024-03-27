@@ -1,0 +1,37 @@
+class bank:
+    def __init__(self, name="", money=0):
+        self.name = name
+        self.money = money
+
+    def setting(self):
+        self.name = input("이름을 입력해주세요: ")
+        self.money = int(input("잔액을 입력해주세요: "))
+        print("%s님의 계좌 잔액은 %d 원입니다."%(self.name, self.money))
+
+    def deposit(self):
+        depo = int(input("얼마를 입금하시겠습니까? "))
+        if depo < 0:
+            print("금액은 양수여야 합니다.")
+        else:
+            self.money += depo
+            print("%d원이 입금되었습니다."%depo)
+
+    def withdraw(self):
+        withd = int(input("얼마를 출금하시겠습니까? "))
+        if withd < 0:
+            print("금액은 양수여야 합니다.")
+        elif withd > self.money:
+            print("출금 금액이 잔액을 초과하거나 잘못 입력되었습니다.")
+        else:
+            self.money -= withd
+            print("%d원이 출금되었습니다." % withd)
+
+    def checking(self):
+        print("%s 님의 계좌 잔액은 %d원입니다" % (self.name, self.money))
+
+if __name__ == "__main__":
+    m = bank()
+    m.setting()
+    m.deposit()
+    m.withdraw()
+    m.checking()
