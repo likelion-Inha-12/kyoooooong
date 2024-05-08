@@ -24,8 +24,6 @@ class Comment(models.Model):
     def __str__(self):
         return self.content
     
-    
-
 class UserPost(models.Model):
     user_id = models.ForeignKey(Member, verbose_name="user", on_delete=models.CASCADE, related_name='liked_posts')  
     post_id = models.ForeignKey(Post, verbose_name="post", on_delete=models.CASCADE, related_name='likers')  
