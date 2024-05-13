@@ -1,11 +1,14 @@
 from django.shortcuts import render
 import json
-from django.http import JsonResponse
+from django.http import JsonResponse,HttpResponse
 from django.shortcuts import get_object_or_404
-
 from .models import *
 
-from django.http import HttpResponse
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView,View
+from rest_framework.decorators import api_view
+from .serializers import PostSerializer
 
 def create_post(request):
     if request.method == 'POST':
@@ -47,34 +50,77 @@ def get_comment(request, post_id):
         post = get_object_or_404(Post, pk=post_id)
         comment_list = post.comments.all()
         return HttpResponse(comment_list, status=200)
+    
 
-#user_id와 post_id를 request로 받고 좋아요를 누르는 api
-#( response는 204 no content로 반환 )
+def api_response(data, message, status):
+    response = {
+        "message":message,
+        "data":data
+    }
+    return Response(response, status=status)
+
+
+@api_view(['POST'])
+def create_post_v2(request):
+    post = Post(
+        title = request.data.get('title'),
+        content = request.data.get('content')
+    )
+    post.save()
+
+    message = f"id: {post.pk}번 포스트 생성 성공"
+    return api_response(data = None, message = message, status = status.HTTP_201_CREATED)
+
+
+class PostApiView(APIView):
+
+    def get_object(self, pk):
+        post = get_object_or_404(Post, pk=pk)
+        return post
+
+    def get(self, request, pk):
+        post = self.get_object(pk)
+
+        postSerializer = PostSerializer(post)
+        message = f"id: {post.pk}번 포스트 조회 성공"
+        return api_response(data = postSerializer.data, message = message, status = status.HTTP_200_OK)
+    
+    def delete(self, request, pk):
+        post = self.get_object(pk)
+        post.delete()
+        
+        message = f"id: {pk}번 포스트 삭제 성공"
+        return api_response(message = message, status = status.HTTP_200_OK) 
+    
+    
 def like(request, user_id, post_id):
     if request.method == 'PATCH':
-        post = get_object_or_404(Post, pk=post_id)
-        post.user_posts.user_id = user_id
-        post.like_count += 1
-        post.save()
-        data = {
-            "message" : f"id: {post_id} 좋아요 수 증가"
-        }
-        return JsonResponse(data, status=204)
+        if UserPost.objects.filter(user_id=user_id, post_id=post_id).exists():
+            return HttpResponse("Already exists.", status=409)
+        else:
+             user = Member.objects.get(pk = user_id)
+        post = Post.objects.get(pk = post_id)
 
-#post_id를 request로 받아 좋아요 개수를 반환하는 api
-#( response는 like_count : 1 )
+        userPost = UserPost(
+            user_id = user,
+            post_id = post
+        )
+        userPost.save()
+
+        return HttpResponse(status=204)
+
+       
 def get_likes(request, post_id):
     if request.method == 'GET':
         post = get_object_or_404(Post, pk=post_id)
+        like_count = UserPost.objects.filter(post_id=post_id).count()
+        return JsonResponse({'message':f'{post_id}의 총 하트 수는 {like_count}입니다.'})
 
-        return JsonResponse({'message':f'{post_id}의 총 하트 수는 {post.like_count}입니다.'})
 
-#댓글이 많이 달린 순으로 post를 정렬하여 리스트로 반환하는 api
-#( response로는 comment_list를 반환한 것처럼 post에서 __str__에 정의된 값으로 리스트화해서 반환 )
 def sort_post(request):
     if request.method == 'GET':
-        post_list = Post.objects.all().order_by('-like_count')
-        return HttpResponse(post_list, status=200)
+       post_list = Post.objects.annotate(comment_count=Count('comments')).order_by('-comment_count') 
+       return HttpResponse(post_list, status=200)
 
 def create_member(request):
     if request.method == 'POST':
